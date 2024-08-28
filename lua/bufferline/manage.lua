@@ -112,6 +112,30 @@ function BuffersUi:open_quick_menu(elements)
     vim.api.nvim_buf_set_lines(self.bufnr, 0, -1, false, contents)
 end
 
+local function get_file_path()
+    local filename = (vim.fn.getcwd() .. "_buffer_manager.json"):gsub("/", "_")
+    local nvim_state_dir = vim.fn.stdpath('state')
+    return nvim_state_dir .. "/sessions/" .. filename
+end
+
+local function read_json_file()
+    local filepath = get_file_path()
+    -- Open the file in read mode
+    local file = io.open(filepath, "r")
+    if not file then
+        error("Could not open file: " .. filepath)
+        return nil
+    end
+
+    -- Read the entire file content
+    local content = file:read("*a")
+    file:close()
+
+    -- Decode the JSON content into a Lua table
+    local decoded_content = vim.fn.json_decode(content)
+    return decoded_content
+end
+
 local function update_bufferline(elements, buf_mngr_files)
 
     local commands = lazy.require("bufferline.commands")
@@ -148,10 +172,21 @@ local function update_bufferline(elements, buf_mngr_files)
       end
     end
 
+    vim.print("dumped to file: " .. get_file_path())
+    local file = io.open(get_file_path(), "w")
+    local json = vim.fn.json_encode(bm_file_to_idx)
+    file:write(json)
+    file:close()
+
     -- Custom sort function that uses the lookup table
     local function mysort(a, b)
-        if bm_file_to_idx[path_formatter(a.path)] == nil or bm_file_to_idx[path_formatter(b.path)] == nil then return false end
-        return bm_file_to_idx[path_formatter(a.path)] < bm_file_to_idx[path_formatter(b.path)]
+        local mapping = read_json_file()
+        if mapping == nil then
+            vim.print("Error reading json file")
+            return false
+        end
+        if mapping[path_formatter(a.path)] == nil or mapping[path_formatter(b.path)] == nil then return false end
+        return mapping[path_formatter(a.path)] < mapping[path_formatter(b.path)]
     end
     commands.sort_by(mysort)
 end
