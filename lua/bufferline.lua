@@ -36,6 +36,7 @@ local M = {
   close_others = commands.close_others,
   unpin_and_close = commands.unpin_and_close,
   toggle_buffer_manager = commands.toggle_buffer_manager,
+  load_buffer_manager_files = commands.load_buffer_manager_files,
 
   ---@deprecated
   pick_buffer = commands.pick,
@@ -175,6 +176,7 @@ local function setup_commands()
   command("BufferLineTogglePin", function() groups.toggle_pin() end, { nargs = 0 })
   command("BufferLineTabRename", function(opts) M.rename_tab(opts.fargs) end, { nargs = "*" })
   command("BufferLineManageBuffers", function() M.toggle_buffer_manager() end, { nargs = "*" })
+  command("BufferLineManageBuffersLoad", function() M.load_buffer_manager_files() end, { nargs = "*" })
   command("BufferLineGroupClose", function(opts) groups.action(opts.args, "close") end, {
     nargs = 1,
     complete = groups.complete,

@@ -276,6 +276,19 @@ function M.toggle_buffer_manager()
   ui.refresh()
 end
 
+--- manage buffers (load from file)
+function M.load_buffer_manager_files()
+  if next(state.components) == nil then
+    manage.load_buffer_mngr_files(nil)
+  else
+    manage.load_buffer_mngr_files(state.components)
+  end
+  state.custom_sort = utils.get_ids(state.components)
+  local opts = config.options
+  if opts.persist_buffer_sort then utils.save_positions(state.custom_sort) end
+  ui.refresh()
+end
+
 function M.rename_tab(args)
   if #args == 0 then return end
   local tabnr = tonumber(args[1])

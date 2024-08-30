@@ -136,9 +136,39 @@ local function read_json_file()
     return decoded_content
 end
 
-local function update_bufferline(elements, buf_mngr_files)
-
+local function close_buffers_not_in_list(elements, files)
     local commands = lazy.require("bufferline.commands")
+    -- Create a lookup table buf mngr file -> index
+    local file_to_idx = {}
+    for index, name in ipairs(files) do
+        file_to_idx[name] = index
+    end
+
+    -- remove deleted elements
+    for _, item in ipairs(elements) do
+      if not file_to_idx[path_formatter(item.path)] then
+          commands.unpin_and_close(item.id)
+      end
+    end
+    return file_to_idx
+end
+
+local function set_sort_func()
+    local commands = lazy.require("bufferline.commands")
+    -- Custom sort function that uses the lookup table
+    local function mysort(a, b)
+        local mapping = read_json_file()
+        if mapping == nil then
+            vim.print("Error reading json file")
+            return false
+        end
+        if mapping[path_formatter(a.path)] == nil or mapping[path_formatter(b.path)] == nil then return false end
+        return mapping[path_formatter(a.path)] < mapping[path_formatter(b.path)]
+    end
+    commands.sort_by(mysort)
+end
+
+local function update_bufferline(elements, buf_mngr_files)
 
     if next(buf_mngr_files) == nil then
       return
@@ -158,37 +188,19 @@ local function update_bufferline(elements, buf_mngr_files)
         end
     end
 
-    -- Create a lookup table buf mngr file -> index
-    local bm_file_to_idx = {}
-    for index, name in ipairs(filtered_buf_mngr_files) do
-        bm_file_to_idx[name] = index
-    end
-
-
-    -- remove deleted elements
-    for _, item in ipairs(elements) do
-      if not bm_file_to_idx[path_formatter(item.path)] then
-          commands.unpin_and_close(item.id)
-      end
-    end
+    local bm_file_to_idx = close_buffers_not_in_list(elements, filtered_buf_mngr_files)
 
     vim.print("dumped to file: " .. get_file_path())
     local file = io.open(get_file_path(), "w")
+    if file == nil then
+        vim.print("unable to open file: " .. get_file_path())
+        return false
+    end
     local json = vim.fn.json_encode(bm_file_to_idx)
     file:write(json)
     file:close()
+    set_sort_func()
 
-    -- Custom sort function that uses the lookup table
-    local function mysort(a, b)
-        local mapping = read_json_file()
-        if mapping == nil then
-            vim.print("Error reading json file")
-            return false
-        end
-        if mapping[path_formatter(a.path)] == nil or mapping[path_formatter(b.path)] == nil then return false end
-        return mapping[path_formatter(a.path)] < mapping[path_formatter(b.path)]
-    end
-    commands.sort_by(mysort)
 end
 
 --- @param elements bufferline.TabElement[]
@@ -199,6 +211,44 @@ function M.toggle_buf_mngr(elements, buf_mngr)
     else
       buf_mngr:open_quick_menu(elements)
     end
+end
+
+local function sort_keys_by_values(tbl)
+    -- Create a list of key-value pairs
+    local key_value_pairs = {}
+    for key, value in pairs(tbl) do
+        table.insert(key_value_pairs, {key = key, value = value})
+    end
+
+    -- Sort the list based on the integer values
+    table.sort(key_value_pairs, function(a, b)
+        return a.value < b.value
+    end)
+
+    -- Create a list of keys in the sorted order
+    local sorted_keys = {}
+    for _, pair in ipairs(key_value_pairs) do
+        table.insert(sorted_keys, pair.key)
+    end
+
+    return sorted_keys
+end
+
+--- @param elements bufferline.TabElement[]
+function M.load_buffer_mngr_files(elements, buf_mngr)
+    local mapping = read_json_file()
+    if mapping == nil then
+        vim.print("Error reading json file")
+        return false
+    end
+  local files = sort_keys_by_values(mapping)
+  for _, name in ipairs(files) do
+    vim.cmd('e ' .. name)
+  end
+  if elements then
+    close_buffers_not_in_list(elements, files)
+  end
+  set_sort_func()
 end
 
 M.BuffersUi = BuffersUi:new()
