@@ -248,6 +248,13 @@ function M.load_buffer_mngr_files(elements, buf_mngr)
   if elements then
     close_buffers_not_in_list(elements, files)
   end
+  local config = lazy.require("bufferline.config")
+  local tabpages = lazy.require("bufferline.tabpages")
+  local state = lazy.require("bufferline.state")
+  local buffers = lazy.require("bufferline.buffers")
+  local is_tabline = config:is_tabline()
+  local components = is_tabline and tabpages.get_components(state) or buffers.get_components(state)
+  state.set({ components = components, })
   set_sort_func()
 end
 

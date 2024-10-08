@@ -119,6 +119,9 @@ end
 function M.sort(elements, opts)
   opts = opts or {}
   local sort_by = opts.sort_by or config.options.sort_by
+  local lazy = require("bufferline.lazy")
+  local utils = lazy.require("bufferline.utils") ---@module "bufferline.utils"
+  utils.notify("sorting buffers", "debug")
   -- the user has manually sorted the buffers don't try to re-sort them
   if opts.custom_sort then return elements end
   if sort_by == "none" then
